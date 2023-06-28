@@ -2,15 +2,9 @@ require(MASS)
 require(boot)
 require(nptest)
 require(sn)
-require(pcaPP)
-#require(mblm)  # Thiel-Sen estimator based on Kendall-tau 
-
-# Skewed normal distribution
-# package `sn`
-# http://azzalini.stat.unipd.it/SN/Intro/intro.html
-
-#######################################
 require(gsl)
+#######################################
+
 # Olkin and Pratt (1958)
 #
 # unbiased sample correlation coefficient
@@ -102,46 +96,29 @@ for (i in 1:nsim){
     sim.dat <- genOutcomes(cov.dat, w=w, alpha=alpha.Y2, omega=omega.Y2)
   
   srho <- with(sim.dat, cor(y1[tx==1], y2[tx==1]))
-#  rho <- srho
-  rho <- rho.olkin(srho, N)
+  rho <- srho
+#  rho <- rho.olkin(srho, N)
   krho <- k*rho
 
-#  rho.0 <- with(sim.dat, cor(y1[tx==0], y2[tx==0]))
-#  sd10 <- with(sim.dat, sd(y1[tx==0]))
-#  sd20 <- with(sim.dat, sd(y2[tx==0]))
-  
-#  ans <- lm(y2-y1 ~ tx*y1c + tx*x1c + tx*x2, data=sim.dat)
-  ans <- lm(y2 ~ tx*y1c + tx*x1c + tx*x2, data=sim.dat)
+ ans <- lm(y2-y1 ~ tx*y1c + tx*x1c + tx*x2, data=sim.dat)
   beta.rct[i, ] <- coef(ans)[c(2,6,7,8)]
   
-#  mod.naive <- lm(y2-y1 ~  y1c + x1c + x2, data = sim.dat, subset = tx==1)
-  mod.naive <- lm(y2 ~  y1c + x1c + x2, data = sim.dat, subset = tx==1)
+  mod.naive <- lm(y2-y1 ~  y1c + x1c + x2, data = sim.dat, subset = tx==1)
   mod1 <- lm(y1 ~  x1c + x2, data = sim.dat, subset = tx==1)
 
 #  S <- (summary(mod1)$r.squared/(N-2))
   S.unadj <- summary(mod1)$r.squared
-#  S <- S.unadj
-  S <- r2.olkin(S.unadj, N, 2)
-  #  k <- (rho.0/rho)*(sd20/sd10)   # Eq. 3.7 of the paper
-  #  krho <- rho.0*(sd20/sd10)   # Eq. 7 of the paper
-
-#  k.est[i] <- (rho.0/rho)*(sd20/sd10)
+  S <- S.unadj
+#  S <- r2.olkin(S.unadj, N, 2)
 
   beta.naive[i,] <- coef(mod.naive)
   
-  m1rho <- 1.0
+  m <- 1.0
 
-#  correction.1b <- 1 + (m1rho*S - krho) / (1-S)
-  correction.1b <- (m1rho*S - krho) / (1-S)
-  correction.xb <- (krho - m1rho)/(1-S)*coef(mod1)[-1]
+  correction.1b <- (m - krho) / (1-S) + (m-1)
+  correction.xb <- (krho - m)/(1-S)*coef(mod1)[-1]
   correction.b <- c(correction.1b, correction.xb)
   beta.b[i,] <- beta.naive[i,] + c(0, correction.b)
-  
-#  mod10 <- lm(y1 ~  x1 + x2, data = sim.dat, subset = tx==0)
-#  mod20 <- lm(y2 ~  x1 + x2, data = sim.dat, subset = tx==0)
-#  beta10[i,] <- coef(mod10)
-#  beta20[i,] <- coef(mod20)
-#  m1rho.est[i,] <- coef(mod20)[-1]/coef(mod10)[-1]
   
 }
 
@@ -421,29 +398,6 @@ Mean    0.6704863  0.11544317  0.11563107  0.11562630
 Max.    0.7767804  0.26380314  0.17619867  0.17619398
 
 ###########################################################
-######################################################
-
-romberg <- function(x, y) {
-  # first-order acceleration
-  k <- length(x) 
-  x.new <- x
-  for (i in 2:k){
-    x.new[i] <- 1/(1/y[i] - 1/y[i-1]) *(x[i]/y[i] - x[i-1]/y[i-1])
-  }
-  return(x.new)
-}
-
-aitken <- function(x, y) {
-  # second-order acceleration
-  k <- length(x) 
-  x.new <- x
-  for (i in 3:k){
-    x.new[i] <- 1/(2/y[i] - 3/y[i-1] + 1/y[i-2]) *(2*x[i]/y[i] - 3*x[i-1]/y[i-1] + x[i-2]/y[i-2])
-  }
-  return(x.new)
-}
-
-#######################
 
 mu <- c(0,1)
 sigma <- matrix(NA, 2, 2)
