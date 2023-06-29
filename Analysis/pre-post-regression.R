@@ -93,7 +93,7 @@ prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5), m=1, nboot=1000, c
 #####
 # Examples
 #
-# TKR data
+# TKR data 
 
 load("/Data/tkr.RData")
 
