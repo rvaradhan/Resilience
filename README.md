@@ -20,8 +20,8 @@ In the \simulations folder:
 	"pre-post-regression.R":
 
 In the \Analysis folder:
-		pkgTest(x): test if a required package has already been downloaded. 
-		prepost(formula, data, change=TRUE, k=c(1.0,1.5), nboot=200, ci.level=0.95, boot.method=c("perc", "norm", "basic", "bca")): the main function provides pre-post change regression analysis. The formula should be a `lm' formula, such as y2~y1+x1, where y2 is the post value, y1 is the pre value and need to be called before any other covariates. The "change" option is to choose if a pre-post change regression model should be estimated, by default it is set to TRUE. 
+		"pkgTest(x)": test if a required package has already been downloaded. 
+		"prepost(formula, data, change=TRUE, k=c(1.0,1.5), nboot=200, ci.level=0.95, boot.method=c("perc", "norm", "basic", "bca"))": the main function provides pre-post change regression analysis. The formula should be a `lm' formula, such as y2~y1+x1, where y2 is the post value, y1 is the pre value and need to be called before any other covariates. The "change" option is to choose if a pre-post change regression model should be estimated, by default it is set to TRUE. 
  		
 Data in the package:
 
