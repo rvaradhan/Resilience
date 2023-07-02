@@ -1,22 +1,7 @@
-library(nptest)
-library(parallel)
-library(doParallel)
-library(foreach)
-
-pkgTest <- function(x)
-{
-  sapply(x, function (x) if (suppressMessages(!require(x,character.only = TRUE, quietly = TRUE)))
-  {
-    install.packages(x,dep=TRUE)
-    if(suppressMessages(!require(x,character.only = TRUE, quietly = TRUE))) stop("Package not found")
-  })
-}
-
-invisible(pkgTest(c("nptest", "parallel", "doParallel", "foreach")))
-
-prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5), m=1, nboot=1000, ci.level=0.95, 
-                    boot.method=c("perc", "norm", "basic", "bca")){
-
+prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5,2.0), m=1, nboot=1000, 
+                    ci.level=0.95, boot.method=c("perc", "norm", "basic", "bca"),
+                    ncores=2){
+  
   statfun <- function(x, bdata, kb){
     datax <- bdata[x, ]
     mf <- model.frame(formula, data = datax)
@@ -35,13 +20,12 @@ prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5), m=1, nboot=1000, c
     beta <- beta.naive + c(0, correction.b)
     return(beta)
   }
-
+  
   if (length(showConnections()) > 0) closeAllConnections()
-  no_cores <- detectCores()
-  cl <- makeCluster(no_cores)  
+  cl <- makeCluster(ncores)  
   registerDoParallel(cl)  
-  nbc <- max(2, round(no_cores/2))
-
+  nbc <- max(2, round(ncores/2))
+  
   varbs <- labels(terms(formula)) # independent variables
   y1 <- varbs[1]
   npar <- length(varbs) + 1 
@@ -51,7 +35,7 @@ prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5), m=1, nboot=1000, c
   formula.text1 <- formula.text
   formula.new <- if(change) as.formula(formula.text1) else formula
   if (npar > 2) formula.1 <- if(intcpt==1) paste(y1, "~", paste(varbs[-1], collapse = " + ")) else paste( y1, "~", paste(varbs[-1],  collapse = " + "), "-1") 
-
+  
   mf <- model.frame(formula, data = data)
   rho <- cor(mf[,1], mf[,2])
   mod.naive <- lm(formula.new, data = data)
@@ -72,44 +56,23 @@ prepost <- function(formula, data, change=TRUE, k=c(1.0,1.5), m=1, nboot=1000, c
     } else correction.b <- correction.1b
     beta[,j] <-   beta.naive + c(0, correction.b)
   }
-
+  
   boot.method <- match.arg(boot.method)
   
   ci <- foreach (j = 1:length(k), combine=`cbind`) %dopar% {
     npbs <- nptest::np.boot(x=1:nrow(data), statistic = statfun, kb=k[j], bdata = data, 
                             R=nboot, level=ci.level, 
-                    method=boot.method, boot.dist=FALSE, parallel = TRUE, 
-                    cl=parallel::makeCluster(nbc))
+                            method=boot.method, boot.dist=FALSE, parallel = TRUE, 
+                            cl=parallel::makeCluster(nbc))
     t(eval(parse(text=paste("npbs", boot.method, sep="$"))))
   }
-
+  
   closeAllConnections()
-
+  
   names(ci) <- paste("k", k, sep="=")
   rownames(beta) <- names(beta.naive)
   colnames(beta) <- paste("k", k, sep="=")
   list(naive.beta = coef(summary(mod.naive)), corrected.beta = beta, CI = ci)
 }
-#####
-# Examples
-#
-# TKR data 
-
-load("/Data/tkr.RData")
-
-# pre-post change regression
-ans1 <- prepost(post.Y ~ pre.Y + I(age-mean(age)) + I((age - mean(age))^2) + bmi + gender*as.factor(smoker), 
-                           data=tkr.dat, k=c(1.2, 1.5, 2.0))
-
-# Post regression
-ans2 <- prepost(post.Y ~ pre.Y + I(age-mean(age)) + I((age - mean(age))^2) + bmi + gender*as.factor(smoker), 
-                           boot.method="norm", data=tkr.dat, k=c(1.2, 1.5, 2.0), change=FALSE)
-
-# without any covariates
-ans3 <- prepost(post.Y ~ pre.Y, data=tkr.dat, k=c(1.2, 1.5, 2.0))
-
-# Bootstrapping using "bca" - realtively slow
-ans4 <- prepost(post.Y ~ pre.Y, data=tkr.dat, k=c(1.2, 1.5, 2.0), change=FALSE, boot.method = "bca")
 
 
-#############################################
