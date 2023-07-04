@@ -27,4 +27,4 @@ In the **Analysis** folder:
  		
 Data in the package:
 > **"tkr.RData"**:
-> - Simulated data with 1800 observations and 6 variables. post.Y is the outcome come variable and pre.Y is the first covariate. 
+> - Simulated data with 900 observations and 6 variables. post.Y is the outcome come variable and pre.Y is the first covariate. 
